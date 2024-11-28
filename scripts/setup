@@ -4,6 +4,9 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-python3 -m pip install uv
+sudo chmod 777 -R /usr/local/lib/python3.12/site-packages/
+sudo chmod 777 -R /usr/local/bin/
+sudo chmod 777 -R /usr/local/include/
 
+python3 -m pip install uv
 python3 -m uv pip install --requirement requirements.txt
