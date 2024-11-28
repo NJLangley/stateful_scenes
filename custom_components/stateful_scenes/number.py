@@ -19,6 +19,10 @@ from .const import (
     DEBOUNCE_STEP,
     DEVICE_INFO_MANUFACTURER,
     DOMAIN,
+    DEFAULT_NUMBER_TOLERANCE,
+    TOLERANCE_MAX,
+    TOLERANCE_MIN,
+    TOLERANCE_STEP
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,11 +45,11 @@ async def async_setup_entry(
     if isinstance(data[entry.entry_id], StatefulScenes.Hub):
         hub = data[entry.entry_id]
         for scene in hub.scenes:
-            entities += [TransitionNumber(scene), DebounceTime(scene)]
+            entities += [TransitionNumber(scene), DebounceTime(scene), NumberTolerance(scene)]
 
     elif isinstance(data[entry.entry_id], StatefulScenes.Scene):
         scene = data[entry.entry_id]
-        entities += [TransitionNumber(scene), DebounceTime(scene)]
+        entities += [TransitionNumber(scene), DebounceTime(scene), NumberTolerance(scene)]
 
     else:
         _LOGGER.error("Invalid entity type for %s", entry.entry_id)
@@ -178,3 +182,64 @@ class DebounceTime(RestoreNumber):
     def native_value(self) -> float:
         """Return the entity value to represent the entity state."""
         return self._scene.debounce_time
+
+
+class NumberTolerance(RestoreNumber):
+    """The rounding tolerance used to assess whether the scene is active, due to some attributes such as light brightness and color getting rounded off."""
+
+    _attr_native_max_value = TOLERANCE_MAX
+    _attr_native_min_value = TOLERANCE_MIN
+    _attr_native_step = TOLERANCE_STEP
+    _attr_native_unit_of_measurement = None
+    _attr_name = "Number Tolerance"
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, scene: StatefulScenes.Scene) -> None:
+        """Initialize."""
+        self._scene = scene
+        self._name = f"{scene.name} Number Tolerance"
+        self._attr_unique_id = f"{scene.id}_number_tolerance"
+
+        _LOGGER.debug(
+            "Setting initial number tolerance for %s to %s",
+            scene.name,
+            scene.number_tolerance,
+        )
+        self._scene.set_number_tolerance(scene.number_tolerance)
+
+    @property
+    def name(self) -> str:
+        """Return the display name of this light."""
+        return self._name
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={(self._scene.id,)},
+            name=self._scene.name,
+            manufacturer=DEVICE_INFO_MANUFACTURER,
+        )
+
+    def set_native_value(self, value: float) -> None:
+        """Update the current value."""
+        self._scene.set_number_tolerance(value)
+
+    async def async_added_to_hass(self) -> None:
+        """Restore last state."""
+        await super().async_added_to_hass()
+        if (last_state := await self.async_get_last_state()) and (
+            last_number_data := await self.async_get_last_number_data()
+        ):
+            if last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                _LOGGER.debug(
+                    "Restoring number tolerance for %s to %s",
+                    self._scene.name,
+                    last_number_data.native_value,
+                )
+                self._scene.set_number_tolerance(last_number_data.native_value)
+
+    @property
+    def native_value(self) -> float:
+        """Return the entity value to represent the entity state."""
+        return self._scene.number_tolerance

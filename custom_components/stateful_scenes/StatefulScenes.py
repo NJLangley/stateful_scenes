@@ -53,7 +53,7 @@ class Hub:
         self,
         hass: HomeAssistant,
         scene_path: str,
-        number_tolerance: int = 1,
+        number_tolerance: int = 3,
     ) -> None:
         """Initialize the Hub class.
 
@@ -207,7 +207,7 @@ class Scene:
         self.hass = hass
         self.name = scene_conf[CONF_SCENE_NAME]
         self._entity_id = scene_conf[CONF_SCENE_ENTITY_ID]
-        self.number_tolerance = scene_conf[CONF_SCENE_NUMBER_TOLERANCE]
+        self._number_tolerance = scene_conf[CONF_SCENE_NUMBER_TOLERANCE]
         self._id = scene_conf[CONF_SCENE_ID]
         self.area_id = scene_conf[CONF_SCENE_AREA]
         self.learn = scene_conf[CONF_SCENE_LEARN]
@@ -291,6 +291,15 @@ class Scene:
     def set_debounce_time(self, debounce_time: float):
         """Set the debounce time."""
         self._debounce_time = debounce_time or 0.0
+
+    @property
+    def number_tolerance(self) -> float:
+        """Get the debounce time."""
+        return self._number_tolerance
+
+    def set_number_tolerance(self, number_tolerance: int):
+        """Set the number tolerance."""
+        self._number_tolerance = number_tolerance or 0
 
     @property
     def restore_on_deactivate(self) -> bool:
