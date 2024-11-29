@@ -308,7 +308,10 @@ class Scene:
 
     def set_restore_on_deactivate(self, restore_on_deactivate):
         """Set the restore on deactivate flag."""
+        run_update = self._restore_on_deactivate is False and restore_on_deactivate is True
         self._restore_on_deactivate = restore_on_deactivate
+        if run_update and self._restore_on_deactivate:
+            self.check_all_states()
 
     @property
     def ignore_unavailable(self) -> bool:
@@ -450,6 +453,12 @@ class Scene:
         for entity_id in self.entities:
             state = self.hass.states.get(entity_id)
             self.states[entity_id] = self.check_state(entity_id, state)
+
+            # Shortcut checking all entities when restore on deactivate is turned off to save checking all states
+            # and attributes. When restore on deactivate is turned on, we update all states
+            if not self.restore_on_deactivate and not self.states[entity_id]:
+                self._is_on = False
+                return
 
         states = [state for state in self.states.values() if state is not None]
 
