@@ -361,9 +361,21 @@ class Scene:
                 if attribute not in old_entity_attrs or attribute not in entity_attrs:
                     continue
 
-                if not self.compare_values(
-                    old_entity_attrs[attribute], entity_attrs[attribute]
-                ):
+                match = False
+                if attribute.endswith("_color"):
+                    match = self.compare_colors(
+                        old_entity_attrs[attribute],
+                        entity_attrs[attribute],
+                        attribute == "xy_color"
+                    )
+                    _LOGGER.debug("Update: Key '[%s]': compare colors - %sMATCHED", attribute, "" if match else "NOT ")
+                else:
+                    match = self.compare_values(
+                        old_entity_attrs[attribute],
+                        entity_attrs[attribute]
+                    )
+
+                if not match:
                     return True
         return False
 
@@ -396,9 +408,22 @@ class Scene:
                     or attribute not in entity_attrs
                 ):
                     continue
-                if not self.compare_values(
-                    self.entities[entity_id][attribute], entity_attrs[attribute]
-                ):
+
+                match = False
+                if attribute.endswith("_color"):
+                    match = self.compare_colors(
+                        self.entities[entity_id][attribute],
+                        entity_attrs[attribute],
+                        attribute == "xy_color"
+                    )
+                    _LOGGER.debug("Check: Key '[%s]': compare colors - %sMATCHED", attribute, "" if match else "NOT ")
+                else:
+                    match = self.compare_values(
+                        self.entities[entity_id][attribute],
+                        entity_attrs[attribute]
+                    )
+
+                if not match:
                     _LOGGER.debug(
                         "[%s] attribute not matching: %s %s: wanted=%s got=%s.",
                         self.name,
@@ -494,6 +519,27 @@ class Scene:
     def compare_numbers(self, number1, number2):
         """Compare two numbers."""
         return abs(number1 - number2) <= self.number_tolerance
+
+    def compare_colors(self, color1, color2, is_xy_color: bool):
+        """Compare two colors."""
+        if color1 is None and color2 is None:
+            return True
+        if color1 is None or color2 is None:
+            return False
+
+        if (not (isinstance(color1, list) or isinstance(color1, tuple)) and
+            not (isinstance(color2, list) or isinstance(color2, tuple))
+        ):
+            _LOGGER.debug(f"Colours are not lists or tupples: {color1}:{color2}")
+            return False
+
+        for component1, component2 in zip(color1, color2):
+            # xy colours are from -1:1 on each axis. By multiplying the component values by 100, we get back to a range
+            # we can compare using self.number_tolerance.
+            factor = 100 if is_xy_color else 1
+            if abs(component1 - component2) * factor > self.number_tolerance:
+                return False
+        return True
 
     @staticmethod
     def learn_scene_states(hass: HomeAssistant, entities: list) -> dict:
